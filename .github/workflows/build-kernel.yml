@@ -25,6 +25,25 @@ jobs:
         run: |
           git clone --depth=1 ${{ env.KERNEL_SOURCE }} -b ${{ env.KERNEL_SOURCE_BRANCH }} kernel-source
 
+      - name: Setup build environment
+        run: |
+          export SHELL=/bin/bash
+          export CONFIG_SHELL=/bin/bash
+          
+          cd kernel-source
+          
+          if [ -f "scripts/version.sh" ]; then
+            ln -sf version.sh scripts/-version.sh
+          else
+            echo '#!/bin/bash
+            # Dummy version script
+            echo "0.0.0"' > scripts/version.sh
+            chmod +x scripts/version.sh
+            ln -sf version.sh scripts/-version.sh
+          fi
+          
+          cd ..
+
       - name: Build kernel
         run: |
           export KBUILD_BUILD_USER="merdeka45surh"
@@ -35,19 +54,12 @@ jobs:
           
           cd kernel-source
           
-          if [ -f "scripts/version.sh" ] && [ ! -f "scripts/-version.sh" ]; then
-            ln -sf version.sh scripts/-version.sh
-          fi
-          
           args="ARCH=arm64 \
                 O=../out \
                 ${{ env.BUILD_ARGS }} \
                 CLANG_TRIPLE=aarch64-linux-gnu- \
-                CROSS_COMPILE=$GITHUB_WORKSPACE/aarch64-linux-android-4.9/bin/aarch64-linux-android-"
-          
-          if [ -d "$GITHUB_WORKSPACE/arm-linux-androideabi-4.9/bin" ]; then
-            args="$args CROSS_COMPILE_ARM32=$GITHUB_WORKSPACE/arm-linux-androideabi-4.9/bin/arm-linux-androideabi-"
-          fi
+                CROSS_COMPILE=$GITHUB_WORKSPACE/aarch64-linux-android-4.9/bin/aarch64-linux-android- \
+                CROSS_COMPILE_ARM32=$GITHUB_WORKSPACE/arm-linux-androideabi-4.9/bin/arm-linux-androideabi- "
           
           make ${args} ${{ env.KERNEL_CONFIG }}
           make -j$(($(getconf _NPROCESSORS_ONLN) * 2)) ${args}
