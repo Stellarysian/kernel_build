@@ -29,21 +29,32 @@ jobs:
         run: |
           export KBUILD_BUILD_USER="merdeka45surh"
           export KBUILD_BUILD_HOST="workspace"
+          export SHELL=/bin/bash
+          export CONFIG_SHELL=/bin/bash
           export PATH=$GITHUB_WORKSPACE/clang/bin:${PATH}
-          args="                  ARCH=arm64 \
-                                  O=../out \
-                                  ${{ env.BUILD_ARGS }} \
-                                  CLANG_TRIPLE=aarch64-linux-gnu- \
-                                  CROSS_COMPILE=$GITHUB_WORKSPACE/aarch64-linux-android-4.9/bin/aarch64-linux-android- \
-                                  CROSS_COMPILE_ARM32=$GITHUB_WORKSPACE/arm-linux-androideabi-4.9/bin/arm-linux-androideabi- "
+          
           cd kernel-source
+          
+          if [ -f "scripts/version.sh" ] && [ ! -f "scripts/-version.sh" ]; then
+            ln -sf version.sh scripts/-version.sh
+          fi
+          
+          args="ARCH=arm64 \
+                O=../out \
+                ${{ env.BUILD_ARGS }} \
+                CLANG_TRIPLE=aarch64-linux-gnu- \
+                CROSS_COMPILE=$GITHUB_WORKSPACE/aarch64-linux-android-4.9/bin/aarch64-linux-android-"
+          
+          if [ -d "$GITHUB_WORKSPACE/arm-linux-androideabi-4.9/bin" ]; then
+            args="$args CROSS_COMPILE_ARM32=$GITHUB_WORKSPACE/arm-linux-androideabi-4.9/bin/arm-linux-androideabi-"
+          fi
+          
           make ${args} ${{ env.KERNEL_CONFIG }}
           make -j$(($(getconf _NPROCESSORS_ONLN) * 2)) ${args}
 
       - name: Collect kernel files
         id: collect_files
         run: |
-          # 我喜欢你
           OUTPUT_DIR="kernel_output"
           mkdir -p ${OUTPUT_DIR}
           
